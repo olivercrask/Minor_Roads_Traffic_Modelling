@@ -1,4 +1,4 @@
-﻿
+
 
 -- To begin estimating the minor road importance index, the OSM data need to be 
 -- split into individual AOIs, that is distinct networks of minor roads only accessible

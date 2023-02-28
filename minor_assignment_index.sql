@@ -1,4 +1,4 @@
-﻿
+
 -- We have now generated a count of the number of times each minor road is transversed,
 -- higher counts indicate more important roads for traffic. These are raw counts and
 -- need to be standardised as the count is dependent on the number of roads in an AOI and

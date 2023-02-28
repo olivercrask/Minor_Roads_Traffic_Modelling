@@ -1,4 +1,4 @@
-﻿
+
 
 -- The UK Dept of Transport AADT count points (CP) are on a slightly diffent geography to the OSM roads, 
 -- this is possibly because they were georeferenced to the side of the road, pavement, or similar,

@@ -1,4 +1,4 @@
-﻿
+
 -- The pgRouting Dijkstra algorithm is run here
 -- There are two runs: the major road enclosed minor roads and the coastal minor roads
 -- The output is a table of all minor road IDs and a count of the number of times they are 
@@ -15,12 +15,10 @@ declare
 begin
 	truncate paths;
 	insert into paths
-	select seq, id1 as path, id2 as node, id3 as edge, cost
-	from pgr_kdijkstrapath(
+	select seq, path_seq as path, node, edge, cost
+	from pgr_dijkstra(
 		'select gid as id, source, target, cost, reverse_cost from pgr_gb',
-		s, array(select t.target from target as t), false, true 
-		);
-		
+		s, array(select t.target from target as t), false);
 	update totals as t2
 	set total = total + s.count
 	from (select p.edge, count(p.edge)
@@ -89,7 +87,7 @@ from pgr_gb;
 ----------------------------------------------------------
 -- (3) Run routing for enclosed polygons
 ----------------------------------------------------------
-do $$ 
+do $$
 	declare polys integer[];
 	declare x integer;
 	declare x1 integer := 1;
@@ -187,7 +185,7 @@ begin
 		end if;
 		x1 := x1 + 1;
 	end loop;
-end $$
+end $$;
 
 
 ----------------------------------------------------------
