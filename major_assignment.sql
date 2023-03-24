@@ -15,7 +15,7 @@
 
 -- #######################################################
 -- AADT on major roads from the UK Dept of Transport
--- imported as aadt_major_2013
+-- imported as aadt_major_year
 -- convert to .dbf and use the PostGIS shapefile importer
 -- #######################################################
 
@@ -23,14 +23,46 @@
 --2013	51	South West	Isles of Scilly	A3111	PR	E	90200	10585	Pierhead, Hugh Town	A3112	0.3	0.2	149	51	298	13	182	22	566
 --2013	51	South West	Isles of Scilly	A3111	PR	W	90200	10585	Pierhead, Hugh Town	A3112	0.3	0.2	136	42	229	14	144	16	445
 
---Make this a spatial table (assuming BNG:227700)
-drop table if exists aadt_major_2013_pnts;
-create table aadt_major_2013_pnts as
+-- Create major aadt single year table from dft_traffic_counts_aadf
+drop table if exists aadt_major_year;
+create table aadt_major_year_pnts as
+select
+	d.*
+from
+	dft_traffic_counts_aadf as d
+where
+	year = 2021 and road_type = 'Major';
+
+-- Reformat table to match Morley DfT 2013 column format
+alter table aadt_major_year 
+rename column count_poin to CP;
+alter table aadt_major_year 
+rename column road_name to Road;
+alter table aadt_major_year 
+rename column pedal_cycl to PedalCycle;
+alter table aadt_major_year 
+rename column two_wheele to twowheel;
+alter table aadt_major_year 
+rename column cars_and_t to CarsTaxis;
+alter table aadt_major_year 
+rename column buses_and_ to Buses;
+alter table aadt_major_year
+rename column lgvs to LightGood;
+alter table aadt_major_year 
+rename column all_hgvs to AllHGVs;
+alter table aadt_major_year 
+rename column all_motor_ to AllMV;
+alter table aadt_major_year
+alter column cp TYPE varchar;
+
+-- --Make this a spatial table (assuming BNG:227700)
+-- drop table if exists aadt_major_year_pnts;
+create table aadt_major_year_pnts as
 select 
 	a.*,
-	ST_SetSRID(ST_MakePoint(cast(a.Easting as numeric), cast(a.Northing as numeric)), 27700) as geom
+	ST_SetSRID(ST_MakePoint(cast(a.easting as numeric), cast(a.northing as numeric)), 27700) as geom
 from
-	aadt_major_2013 as a;
+	aadt_major_year as a;
 
 
 -- #######################################################
@@ -219,18 +251,18 @@ begin
 	create table point_to_road as
 	select distinct on (np.geom) np.*, p.geom as cp_geom 
 	from
-		(select r.*, nn(r.geom, 1, 20, 2, 'aadt_major_2013_pnts', 'cp', 'geom') as near_cp
-			from osm_roads_major_bng as r inner join aadt_major_2013_pnts as p
+		(select r.*, nn(r.geom, 1, 20, 2, 'aadt_major_year_pnts', 'cp', 'geom') as near_cp
+			from osm_roads_major_bng as r inner join aadt_major_year_pnts as p
 			on st_dwithin(p.geom, r.geom, 10)
 		) as np 
-			left join aadt_major_2013_pnts as p 
+			left join aadt_major_year_pnts as p 
 			on np.near_cp = p.cp;
 
 	-- (B) Get the unassigned AADT count points
 	-- These will be the ones that are >10m from a road
 	drop table if exists unassigned_cp;
 	create table unassigned_cp as
-	select p.cp, p.road, p.geom from aadt_major_2013_pnts as p 
+	select p.cp, p.road, p.geom from aadt_major_year_pnts as p 
 	where not exists (select 1 from
 		point_to_road as a
 		where a.near_cp = p.cp);
@@ -255,7 +287,7 @@ begin
 		on st_dwithin(p.geom, r.geom, 50)
 		where p.road = r.ref 
 		) as np 
-		left join aadt_major_2013_pnts as p 
+		left join aadt_major_year_pnts as p 
 	on np.near_cp = p.cp;
 	create index point_to_road_indx on point_to_road using gist(cp_geom);
 
@@ -456,7 +488,7 @@ begin
 	left join
 		(select p.pedalcycle, p.twowheel, p.carstaxis, p.buses, p.lightgood, p.allhgvs, p.allmv, p.cp, f.gid from result as f 
 	left join 
-		aadt_major_2013_pnts as p on cast(p.cp as integer) = f.near_cp) as t2
+		aadt_major_year_pnts as p on cast(p.cp as integer) = f.near_cp) as t2
 	on t1.gid = t2.gid
 	--add back minor roads
 	union all
