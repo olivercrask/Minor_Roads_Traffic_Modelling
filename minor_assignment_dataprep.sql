@@ -6,14 +6,7 @@
 -- major road network. Coastal areas are a special case, the minor road network is not encircled by major
 -- roads in these areas. These areas have to be handled separately.
 
-
--- (1) Set up pgRouting
--- will give an error if exists (you can ignore this)
-create extension pgrouting;
-select pgr_version();
-
-
--- (2) Get the input data with topology enabled
+-- (1) Get the input data with topology enabled
 -- 'tres' is the output from 'major_assignment.sql'
 -- create a copy of tres first
 create table pgr_gb as select * from tres;
@@ -23,7 +16,7 @@ create index pgr_gb_indx on pgr_gb using gist(geom);
 select pgr_createTopology('pgr_gb', 0.00001, 'geom', 'gid');
 
 
--- (3) Divide into minor and major road tables
+-- (2) Divide into minor and major road tables
 -- table of major roads only (with AADT)
 drop table if exists pgr_gb_major;
 create table pgr_gb_major as
@@ -39,14 +32,14 @@ where minor = 1;
 create index pgr_gb_minor_indx on pgr_gb_minor using gist(geom);
 
 
--- (4) Get bounding box of the road network
+-- (3) Get bounding box of the road network
 drop table if exists bbox;
 create table bbox as
 select st_extent(geom)::geometry as geom from tres;
 select updategeometrysrid('bbox','geom',4326);
 
 
--- (5) Polygonise major road segments
+-- (4) Polygonise major road segments
 -- This will give AOIs to generate routes within defined as
 -- areas contained within a series of major roads
 -- From one of these areas it is not possible to access a minor road
@@ -62,7 +55,7 @@ group by b.geom;
 alter table major_polys_temp add column gid serial;
 
 
--- (6) First routing run is on closed polygons
+-- (5) First routing run is on closed polygons
 -- Identify these as 'major_polys'
 drop table if exists major_polys;
 create table major_polys as 
@@ -70,7 +63,7 @@ select p.gid, p.geom from major_polys_temp as p where p.gid != 1;
 alter table major_polys add column id serial;
 
 
--- (7) Second routing run is on parts of the network on the coast (i.e. not enclosed by major roads) or,
+-- (6) Second routing run is on parts of the network on the coast (i.e. not enclosed by major roads) or,
 -- parts of the network on islands that have no major roads
 -- Identify these as 'coast_roads' then assign them an ID based on groups, i.e. on basis of only being able to access
 -- other minor roads without crossing a major road 'coast_roads_net'
